@@ -1,0 +1,266 @@
+bool GJK(Body* body_a, Body* body_b, glm::vec3 axis)
+	{
+		Shape* a = body_a->shapes[0];
+		Shape* b = body_b->shapes[0];
+		glm::vec3 A_a = support(body_a, axis);
+		glm::vec3 A_b = support(body_b, -axis);
+		glm::vec3 A = A_a - A_b;//a->support(axis) - b->support(-axis);
+		s.clear();
+		s.add(A, A_a, A_b);
+		glm::vec3 D = -A;
+
+		unsigned int iters = 0;
+		while (iters < 50)
+		{
+			++iters;
+			A_a = support(body_a, D);
+			A_b = support(body_b, -D);
+			A = A_a - A_b;//a->support(D) - b->support(-D);
+			if (glm::dot(A, D) < 0)
+			{
+				//std::cout << "iters: " << iters << std::endl;
+				return false;
+			}
+			s.add(A, A_a, A_b);
+
+			switch (s.n)
+			{
+			case 2:
+			{
+				// A: v[1]
+				// B: v[0]
+				glm::vec3 AB = s.v[0] - s.v[1];
+				glm::vec3 AO = -s.v[1];
+				D = trip(AB, AO);
+				break;
+			}
+			case 3:
+			{
+				// A: v[2]
+				// B: v[1]
+				// C: v[0]
+				glm::vec3 AB = s.v[1] - s.v[2];
+				glm::vec3 AC = s.v[0] - s.v[2];
+				glm::vec3 AO = -s.v[2];
+				glm::vec3 norm = glm::cross(AB, AC);
+				glm::vec3 AB_out = glm::cross(AB, norm);
+				if (glm::dot(AB_out, AO) > 0) // AB was closest
+				{
+					D = trip(AB, AO);
+					s.n = 2;
+					s.set(0, 1);
+					s.set(1, 2);
+				}
+				else
+				{
+					glm::vec3 AC_out = glm::cross(norm, AC);
+					if (glm::dot(AC_out, AO) > 0) // AC was closest
+					{
+						D = trip(AC, AO);
+						s.n = 2;
+						//s.v[0] = s.v[0]; // redundant
+						s.set(1, 2);
+					}
+					else // inside triangular prism
+					{
+						// make sure new D is normal to new triangle
+						if (glm::dot(norm, AO) > 0) // above triangle
+						{
+							D = norm;
+						}
+						else // reverse the triangle by swapping B and C
+						{
+							D = -norm;
+							s.swap(0, 1);
+						}
+					}
+				}
+				break;
+			}
+			case 4:
+			{
+				// A: v[2]
+				// B: v[1]
+				// C: v[0]
+				// D: v[3]
+				glm::vec3 CD = s.v[3] - s.v[0];
+				glm::vec3 BD = s.v[3] - s.v[1];
+				glm::vec3 AD = s.v[3] - s.v[2];
+				glm::vec3 DO = -s.v[3];
+				glm::vec3 CDB = glm::cross(BD, CD);
+				if (glm::dot(CDB, DO) > 0) // in front of CDB
+				{
+					// could be CDB, CD, or BD
+					glm::vec3 CDB_CD_out = glm::cross(CD, CDB);
+					glm::vec3 CDB_BD_out = glm::cross(CDB, BD);
+					if (glm::dot(CDB_CD_out, DO) < 0)
+					{
+						// could be CDB or BD
+						if (glm::dot(CDB_BD_out, DO) < 0)
+						{
+							// CDB [B, C, D]
+							D = CDB;
+							s.n = 3;
+							s.swap(0, 1);
+							s.set(2, 3);
+						}
+						else
+						{
+							// BD [B, D]
+							D = trip(BD, DO);
+							s.n = 2;
+							s.set(0, 1);
+							s.set(1, 3);
+						}
+					}
+					else
+					{
+						// CD [C, D]
+						D = trip(CD, DO);
+						s.n = 2;
+						s.set(1, 3);
+					}
+				}
+				else // behind CDB
+				{
+					// could be CD, BD, AD, ADC, BDA
+					glm::vec3 ADC = glm::cross(CD, AD);
+					if (glm::dot(ADC, DO) > 0) // in front of ADC
+					{
+						// could be CD, AD, ADC
+						glm::vec3 ADC_AD_out = glm::cross(AD, ADC);
+						glm::vec3 ADC_CD_out = glm::cross(ADC, CD);
+
+						if (glm::dot(ADC_AD_out, DO) < 0)
+						{
+							// must be ADC or CD
+							if (glm::dot(ADC_CD_out, DO) < 0)
+							{
+								// ADC [C, A, D]
+								D = ADC;
+								s.n = 3;
+								s.set(1, 2);
+								s.set(2, 3);
+							}
+							else
+							{
+								// CD [C, D]
+								D = trip(CD, DO);
+								s.n = 2;
+								s.set(1, 3);
+							}
+						}
+						else
+						{
+							// AD [A, D]
+							D = trip(AD, DO);
+							s.n = 2;
+							s.set(0, 2);
+							s.set(1, 3);
+						}
+					}
+					else
+					{
+						// must be BDA, BD, AD, ABCD
+						glm::vec3 BDA = glm::cross(AD, BD);
+
+						if (glm::dot(BDA, DO) > 0)
+						{
+							// could be BDA, BD, AD
+							glm::vec3 BDA_AD_out = glm::cross(BDA, AD);
+							glm::vec3 BDA_BD_out = glm::cross(BD, BDA);
+
+							if (glm::dot(BDA_AD_out, DO) < 0)
+							{
+								// must be BDA, BD
+								if (glm::dot(BDA_BD_out, DO) < 0)
+								{
+									// BDA [A, B, D]
+									D = BDA;
+									s.n = 3;
+									s.set(0, 2);
+									s.set(2, 3);
+								}
+								else
+								{
+									// BD
+									D = trip(BD, DO);
+									s.n = 2;
+									s.set(0, 1);
+									s.set(1, 3);
+								}
+							}
+							else
+							{
+								// AD
+								D = trip(AD, DO);
+								s.n = 2;
+								s.set(0, 2);
+								s.set(1, 3);
+							}
+						}
+						else
+						{
+							// ABCD, terminate
+							s.n = 4;
+							//std::cout << "iters: " << iters << std::endl;
+							return true;
+						}
+					}
+				}
+				break;
+			}
+			}
+		}
+		//std::cout << "iters: " << iters << std::endl;
+		return false;
+	}
+
+
+//BodyDef box_def;
+		//box_def.pos.x = -0.2f;
+		//box_def.pos.z = 1.0f;
+		//box_def.angular_damping = 1.0f;// 0.999f;
+		//box_def.linear_damping = 1.0f;// 0.999f;
+		//box_def.angular_vel = glm::vec3(1.0f);
+		//box_def.shape = new Box(glm::vec3(0.0f), glm::vec3(0.8f, 0.6f, 0.4f));
+		//world.createBody(box_def);
+
+		//box_def.pos.x = 0.2f;
+		//box_def.pos.z = 3.0f;
+		//box_def.angular_vel = glm::vec3(3.5f);
+		//box_def.orientation = glm::angleAxis(glm::pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+		//world.createBody(box_def);
+
+		//box_def.pos.x = 0.0f;
+		//box_def.pos.z = 5.0f;
+		//box_def.angular_vel = glm::vec3(1.5f);
+		////box_def.orientation = glm::angleAxis(glm::pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+		//world.createBody(box_def);
+
+
+
+
+// for polyhedron
+void computeMassProperties()
+		{
+			volume = 0.0f;
+			glm::vec3 dmom = glm::vec3(0.0f, 0.0f, 0.0f);
+			for (unsigned int i = 0; i < indices.size(); ++i)
+			{
+				glm::vec3 a = vertices[indices[i].x];
+				glm::vec3 b = vertices[indices[i].y];
+				glm::vec3 c = vertices[indices[i].z];
+				float dv = glm::dot(a, glm::cross(b, c)) / 6.0f;
+				volume += dv;
+
+				glm::vec3 d = (a + b + c) * 0.25f;
+				dmom += d * dv;
+			}
+			centroid = dmom / volume;
+			float rad2 = glm::dot(vertices[0], vertices[0]);
+			float inertia = 0.4f * volume * rad2;
+			local_inertia.x = inertia;
+			local_inertia.y = inertia;
+			local_inertia.z = inertia;
+		}

@@ -1,0 +1,10 @@
+glad.c
+*.vcxproj
+*.filters
+*.user
+*.tlog
+x64
+x86
+ImGui
+imgui.ini
+stb_image.*

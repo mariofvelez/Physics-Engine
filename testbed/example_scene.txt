@@ -1,0 +1,26 @@
+new shape
+type: box
+pos: (0.0, 0.0, 0.0)
+dim: (0.5, 0.5, 0.5)
+
+new shape
+type: sphere
+pos: (0.0, 0.0, 0.0)
+rad: 0.5
+
+new body
+type: dynamic // default static
+pos: (0.0, 0.0, 0.0) // required
+vel: (0.0, 0.0, 0.0) // optional
+orientation: (0.0, 0.0, 0.0, 0.0) // angle axis, optional
+angular_vel: (0.0, 0.0, 0.0) // optional
+linear_damping: 1.0 // optional
+angular_damping: 1.0 // optional
+density: 1.0 // optional
+friction: 0.2 // optional
+restitution: 0.2 // optional
+shape: 0 // required
+
+new body
+pos: (1.0, 0.0, 0.0)
+shape: 1

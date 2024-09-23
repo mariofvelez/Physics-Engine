@@ -194,6 +194,8 @@ namespace fiz
 			glm::quat rot_b = glm::quat(rot_a.w, -rot_a.x, -rot_a.y, -rot_a.z);
 
 			a->orientation = glm::normalize(rot * a->orientation);
+			//a->updateOrientationMat();
+			a->updateInverseInertiaWorld();
 			/*b->orientation = glm::normalize(rot_b * b->orientation);
 
 			a->updateOrientationMat();

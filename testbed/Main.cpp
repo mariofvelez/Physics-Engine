@@ -1,5 +1,5 @@
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glad/glad.h>
 #include <iostream>
 #include <stdlib.h>
 #include <thread>
@@ -40,14 +40,17 @@
 #define time(x)
 #endif
 
+const int window_width = 900;
+const int window_height = 600;
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
 void mouseCallback(GLFWwindow* window, double xpos, double ypos)
 {
-	static float last_X = 450;
-	static float last_Y = 300;
+	static float last_X = window_width / 2;
+	static float last_Y = window_height / 2;
 
 	static bool firstMouse = true;
 	if (firstMouse)
@@ -88,7 +91,7 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	GLFWwindow* window = glfwCreateWindow(900, 600, "Physics Engine", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(window_width, window_height, "Physics Engine", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -103,7 +106,7 @@ int main()
 		return -1;
 	}
 
-	glViewport(0, 0, 900, 600);
+	glViewport(0, 0, window_width, window_height);
 
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSetCursorPosCallback(window, mouseCallback);

@@ -168,7 +168,7 @@ public:
 
 	void renderTestImGui()
 	{
-		const char* tests[] = { "Box Test", "Domino Test", "Stack Test", "Bowling Test", "GJK Test", "BVH Test" };
+		const char* tests[] = { "Box Test", "Domino Test", "Stack Test", "Bowling Test", "GJK Test", "BVH Test", "Car Test" };
 		static int selected_test = 0;
 
 		if (ImGui::BeginCombo("Tests", tests[selected_test]))
@@ -202,6 +202,11 @@ public:
 			{
 				selected_test = 5;
 				setTest(new BVHTest());
+			}
+			if (ImGui::Selectable(tests[6]))
+			{
+				selected_test = 6;
+				setTest(new CarTest());
 			}
 
 			ImGui::EndCombo();

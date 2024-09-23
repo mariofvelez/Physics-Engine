@@ -638,6 +638,60 @@ public:
 	}
 };
 
+class CarTest : public Test
+{
+public:
+	CarTest()
+	{
+		
+	}
+
+	void initialize()
+	{
+		Body* wheel_bodies[4];
+		Body* chassis_body;
+
+		BodyDef wheel_bd;
+		wheel_bd.type = BodyType::DYNAMIC;
+		wheel_bd.shape = shapes.flat_cylinder;
+		wheel_bd.orientation = glm::angleAxis(glm::half_pi<float>(), glm::vec3(0.0f, -1.0f, 0.0f));
+
+		glm::vec3 wheel_pos[] = {
+			glm::vec3(-1.0f,  1.0f, 1.0f), // front left
+			glm::vec3( 1.0f,  1.0f, 1.0f), // front right
+			glm::vec3(-1.0f, -1.0f, 1.0f), // back left
+			glm::vec3( 1.0f, -1.0f, 1.0f)  // back right
+		};
+		for (unsigned int i = 0; i < 4; ++i)
+		{
+			wheel_bd.pos = wheel_pos[i];
+			wheel_bodies[i] = world.createBody(wheel_bd);
+		}
+		
+		BodyDef chassis_bd;
+		chassis_bd.type = BodyType::DYNAMIC;
+		chassis_bd.shape = shapes.box;
+		chassis_bd.pos = glm::vec3(0.0f, 0.0f, 1.2f);
+		chassis_bd.orientation = glm::angleAxis(glm::half_pi<float>(), glm::vec3(0.0f, 0.0f, 1.0f));
+		chassis_body = world.createBody(chassis_bd);
+
+		// front left joint
+		RevoluteJoint* joint = new RevoluteJoint();
+		joint->a = (DynamicBody*)chassis_body;
+		joint->b = (DynamicBody*)wheel_bodies[0];
+		joint->local_a = wheel_pos[0] - chassis_bd.pos;
+		joint->local_b = glm::vec3(0.0f);
+		joint->local_axis_a = glm::vec3(-1.0f, 0.0f, 0.0f);
+		joint->local_axis_b = glm::vec3(0.0f, 0.0f, 1.0f);
+		world.addJoint(joint);
+	}
+
+	void update(float dt)
+	{
+		world.step(dt);
+	}
+};
+
 class ForceTest : public Test
 {
 public:

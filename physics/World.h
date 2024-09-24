@@ -31,7 +31,7 @@ namespace fiz
 
 		glm::vec3 gravity;
 
-		World() : gravity(0.0f, 0.0f, -9.8f), static_bvh(&static_bodies)
+		World() : gravity(0.0f, 0.0f, -9.8f), iters(4), static_bvh(&static_bodies)
 		{
 			shapes.reserve(10);
 			dynamic_bodies.reserve(600);
@@ -97,7 +97,6 @@ namespace fiz
 
 		void step(float delta_t)
 		{
-			int iters = 4;
 			float dt = delta_t / (float)iters;
 			for (unsigned int x = 0; x < iters; ++x)
 			{

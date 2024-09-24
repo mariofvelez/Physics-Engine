@@ -40,8 +40,8 @@
 #define time(x)
 #endif
 
-const int window_width = 900;
-const int window_height = 600;
+const int window_width = 1200;
+const int window_height = 800;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {

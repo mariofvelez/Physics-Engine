@@ -33,6 +33,7 @@ public:
 	Shape* d_4;
 	Shape* d_8;
 	Shape* d_20;
+	Shape* car_chassis;
 
 	void initShapes(DebugRenderer* renderer)
 	{
@@ -48,6 +49,7 @@ public:
 		d_4 = renderer->loadPolyhedron("objects/d_4.obj", 15.0f);
 		d_8 = renderer->loadPolyhedron("objects/d_8.obj", 15.0f);
 		d_20 = renderer->loadPolyhedron("objects/d_20.obj", 15.0f);
+		car_chassis = new Box(glm::vec3(0.0f), glm::vec3(0.4f, 0.8f, 0.4f));
 	}
 
 	void deleteShapes()
@@ -61,6 +63,7 @@ public:
 		delete(flat_cylinder);
 		delete(small_capsule);
 		delete(medium_capsule);
+		delete(car_chassis);
 	}
 };
 
@@ -641,9 +644,16 @@ public:
 class CarTest : public Test
 {
 public:
+	RevoluteJoint* wheel_joints[4];
+
 	CarTest()
 	{
 		
+	}
+	~CarTest()
+	{
+		for (unsigned int i = 0; i < 4; ++i)
+			delete(wheel_joints[i]);
 	}
 
 	void initialize()
@@ -670,20 +680,21 @@ public:
 		
 		BodyDef chassis_bd;
 		chassis_bd.type = BodyType::DYNAMIC;
-		chassis_bd.shape = shapes.box;
+		chassis_bd.shape = shapes.car_chassis;
 		chassis_bd.pos = glm::vec3(0.0f, 0.0f, 1.2f);
-		chassis_bd.orientation = glm::angleAxis(glm::half_pi<float>(), glm::vec3(0.0f, 0.0f, 1.0f));
 		chassis_body = world.createBody(chassis_bd);
 
-		// front left joint
-		RevoluteJoint* joint = new RevoluteJoint();
-		joint->a = (DynamicBody*)chassis_body;
-		joint->b = (DynamicBody*)wheel_bodies[0];
-		joint->local_a = wheel_pos[0] - chassis_bd.pos;
-		joint->local_b = glm::vec3(0.0f);
-		joint->local_axis_a = glm::vec3(-1.0f, 0.0f, 0.0f);
-		joint->local_axis_b = glm::vec3(0.0f, 0.0f, 1.0f);
-		world.addJoint(joint);
+		for (unsigned int i = 0; i < 4; ++i)
+		{
+			wheel_joints[i] = new RevoluteJoint();
+			wheel_joints[i]->a = (DynamicBody*)chassis_body;
+			wheel_joints[i]->b = (DynamicBody*)wheel_bodies[i];
+			wheel_joints[i]->local_a = wheel_pos[i] - chassis_bd.pos;
+			wheel_joints[i]->local_b = glm::vec3(0.0f);
+			wheel_joints[i]->local_axis_a = glm::vec3(-1.0f, 0.0f, 0.0f);
+			wheel_joints[i]->local_axis_b = glm::vec3(0.0f, 0.0f, 1.0f);
+			world.addJoint(wheel_joints[i]);
+		}
 	}
 
 	void update(float dt)

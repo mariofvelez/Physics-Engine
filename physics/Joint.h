@@ -165,13 +165,13 @@ namespace fiz
 			b->pos -= dir * 0.5f;
 
 			// solve angle constraint
-			glm::vec3 world_axis_a = a->getWorldVec(local_axis_a);
-			glm::vec3 world_axis_b = b->getWorldVec(local_axis_b);
+			glm::vec3 world_axis_a = glm::normalize(a->getWorldVec(local_axis_a));
+			glm::vec3 world_axis_b = glm::normalize(b->getWorldVec(local_axis_b));
 			
 			glm::quat rot;
 			float cos = glm::dot(world_axis_a, world_axis_b);
 			glm::vec3 rot_axis;
-			if (cos < -0.9999f)
+			if (cos < -0.9999f) // almost opposite direction
 			{
 				rot_axis = glm::cross(glm::vec3(0.0f, 0.0f, 1.0f), world_axis_a);
 				if (glm::dot(rot_axis, rot_axis) < 0.01f)
@@ -204,6 +204,10 @@ namespace fiz
 			b->updateInverseInertiaWorld();*/
 
 			// solve velocity constraint
+			a->angular_vel = world_axis_a * glm::dot(a->angular_vel, world_axis_a);
+			b->angular_vel = world_axis_b * glm::dot(b->angular_vel, world_axis_b);
+			a->setAwake();
+			b->setAwake();
 		}
 	};
 }

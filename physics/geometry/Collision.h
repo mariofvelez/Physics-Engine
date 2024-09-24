@@ -189,7 +189,7 @@ namespace fiz
 			glm::vec3 closing_vel = b->getVelocityWorld(poc);
 			closing_vel -= a->getVelocityWorld(poc);
 
-			// closing velocity in contact coordinates
+			// closing velocity in contact coordinates (transpose = inverse)
 			glm::vec3 contact_closing_vel = glm::transpose(contact_to_world) * closing_vel;
 
 			// make sure bodies are moving towards each other

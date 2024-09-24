@@ -548,9 +548,14 @@ public:
 
 		if (show_velocities && body.type == fiz::BodyType::DYNAMIC)
 		{
+			// linear velocity
 			setLineSegmentColor(glm::vec3(1.0f, 0.0f, 0.0f));
 			fiz::DynamicBody* d_body = (fiz::DynamicBody*)&body;
 			renderLineSegment(body.pos, body.pos + d_body->vel);
+
+			// angular velocity
+			setLineSegmentColor(glm::vec3(0.0f, 0.0f, 1.0f));
+			renderLineSegment(body.pos, body.pos + d_body->angular_vel);
 		}
 	}
 

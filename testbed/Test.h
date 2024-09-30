@@ -100,6 +100,34 @@ public:
 		renderer = debug_renderer;
 	}
 
+	glm::vec2 getScreenCoords(GLFWwindow* window)
+	{
+		double x, y;
+		glfwGetCursorPos(window, &x, &y);
+
+		int width, height;
+		glfwGetWindowSize(window, &width, &height);
+		glm::vec2 pos = { (float)x, (float)y };
+		pos /= glm::vec2((float)width * 0.5f, (float)height * 0.5f); // change to hals screen resolution
+		pos -= glm::vec2(1.0f);
+		pos.y *= -1.0f;
+		return pos;
+	}
+
+	Ray createRayFromScreen(glm::vec2 screen_pos)
+	{
+		glm::vec4 ray_clip = glm::vec4(screen_pos, -1.0f, 1.0f);
+		glm::vec4 ray_eye = glm::inverse(renderer->camera.projection) * ray_clip;
+		ray_eye.z = -1.0f;
+		ray_eye.w = 0.0f;
+		
+		glm::vec4 ray_world = (inverse(renderer->camera.view) * ray_eye);
+		glm::vec3 dir = { ray_world.x, ray_world.y, ray_world.z };
+		dir = glm::normalize(dir);
+
+		return { renderer->camera.m_pos, dir };
+	}
+
 protected:
 
 	DebugRenderer* renderer;
@@ -596,8 +624,8 @@ public:
 	void initialize()
 	{
 		BodyDef bd;
-		bd.type = fiz::BodyType::STATIC;
-		Shape* sphere = new fiz::Sphere(glm::vec3(0.0f), 0.5f);
+		bd.type = BodyType::STATIC;
+		Shape* sphere = shapes.sphere;
 		bd.shape = sphere;
 		bd.pos = glm::vec3(0.0f);
 		
@@ -611,9 +639,9 @@ public:
 
 		world.buildBVH();
 
-		bd.type = fiz::BodyType::DYNAMIC;
+		bd.type = BodyType::DYNAMIC;
 		bd.pos.z = height + 6.0f;
-		bd.shape = new fiz::Box(glm::vec3(0.0f), glm::vec3(0.5f));
+		bd.shape = new Box(glm::vec3(0.0f), glm::vec3(0.5f));
 		for (unsigned int i = 0; i < 100; ++i)
 		{
 			bd.pos.x = random(-width * 0.5f, width * 0.5f);
@@ -644,7 +672,8 @@ public:
 class CarTest : public Test
 {
 public:
-	RevoluteJoint* wheel_joints[4];
+	const static int num_wheel_joints = 8;
+	BallJoint* wheel_joints[num_wheel_joints];
 
 	CarTest()
 	{
@@ -652,7 +681,7 @@ public:
 	}
 	~CarTest()
 	{
-		for (unsigned int i = 0; i < 4; ++i)
+		for (unsigned int i = 0; i < num_wheel_joints; ++i)
 			delete(wheel_joints[i]);
 	}
 
@@ -660,6 +689,12 @@ public:
 	{
 		Body* wheel_bodies[4];
 		Body* chassis_body;
+
+		BodyDef chassis_bd;
+		chassis_bd.type = BodyType::DYNAMIC;
+		chassis_bd.shape = shapes.car_chassis;
+		chassis_bd.pos = glm::vec3(0.0f, 0.0f, 1.2f);
+		chassis_body = world.createBody(chassis_bd);
 
 		BodyDef wheel_bd;
 		wheel_bd.type = BodyType::DYNAMIC;
@@ -677,29 +712,72 @@ public:
 			wheel_bd.pos = wheel_pos[i];
 			wheel_bodies[i] = world.createBody(wheel_bd);
 		}
-		
-		BodyDef chassis_bd;
-		chassis_bd.type = BodyType::DYNAMIC;
-		chassis_bd.shape = shapes.car_chassis;
-		chassis_bd.pos = glm::vec3(0.0f, 0.0f, 1.2f);
-		chassis_body = world.createBody(chassis_bd);
 
 		for (unsigned int i = 0; i < 4; ++i)
 		{
-			wheel_joints[i] = new RevoluteJoint();
+			wheel_joints[i] = new BallJoint();
 			wheel_joints[i]->a = (DynamicBody*)chassis_body;
 			wheel_joints[i]->b = (DynamicBody*)wheel_bodies[i];
 			wheel_joints[i]->local_a = wheel_pos[i] - chassis_bd.pos;
 			wheel_joints[i]->local_b = glm::vec3(0.0f);
-			wheel_joints[i]->local_axis_a = glm::vec3(-1.0f, 0.0f, 0.0f);
-			wheel_joints[i]->local_axis_b = glm::vec3(0.0f, 0.0f, 1.0f);
 			world.addJoint(wheel_joints[i]);
+
+			wheel_joints[i + 4] = new BallJoint();
+			wheel_joints[i + 4]->a = (DynamicBody*)chassis_body;
+			wheel_joints[i + 4]->b = (DynamicBody*)wheel_bodies[i];
+			wheel_joints[i + 4]->local_a = wheel_pos[i] - chassis_bd.pos;
+			wheel_joints[i + 4]->local_a.x = 0;
+			wheel_joints[i + 4]->local_b = wheel_bodies[i]->getLocalVec(glm::vec3(-wheel_pos[i].x, 0.0f, 0.0f));
+			//world.addJoint(wheel_joints[i + 4]);
 		}
 	}
 
 	void update(float dt)
 	{
 		world.step(dt);
+	}
+};
+
+class RaycastTest : public Test
+{
+	float width = 20.0f;
+	float height = 20.0f;
+	unsigned int num_shapes = 200;
+
+public:
+	RaycastTest()
+	{
+		
+	}
+
+	void initialize()
+	{
+		BodyDef bd;
+		bd.type = BodyType::STATIC;
+		bd.shape = shapes.box;
+		bd.pos = glm::vec3(0.0f);
+		for (unsigned int i = 0; i < num_shapes; ++i)
+		{
+			bd.pos.x = random(-width * 0.5f, width * 0.5f);
+			bd.pos.y = random(-width * 0.5f, width * 0.5f);
+			bd.pos.z = random(0.0f, height);
+
+			glm::vec3 axis = glm::vec3(random(), random(), random());
+			axis = glm::normalize(axis);
+			float angle = random(0.0f, glm::two_pi<float>());
+			bd.orientation = glm::angleAxis(angle, axis);
+			world.createBody(bd);
+		}
+
+		world.buildBVH();
+	}
+
+	void processInput(GLFWwindow* window, float dt)
+	{
+		glm::vec2 screen_pos = getScreenCoords(window);
+		Ray ray = createRayFromScreen(screen_pos);
+		float dist = world.static_bvh.traverse(&ray);
+		std::cout << dist << std::endl;
 	}
 };
 

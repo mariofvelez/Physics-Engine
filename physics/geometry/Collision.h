@@ -39,17 +39,9 @@ namespace fiz
 
 		inline glm::mat3 createSkew(glm::vec3 v)
 		{
-			glm::mat3 mat;
-			mat[0].x = 0.0f;
-			mat[0].y = v.z;
-			mat[0].z = -v.y;
-			mat[1].x = -v.z;
-			mat[1].y = 0.0f;
-			mat[1].z = v.x;
-			mat[2].x = v.y;
-			mat[2].y = -v.x;
-			mat[2].z = 0.0f;
-			return mat;
+			return { 0.0f,   v.z, -v.y,
+					- v.z,  0.0f,  v.x,
+					  v.y,  -v.x, 0.0f };
 		}
 
 		void solveContactStatic()
@@ -152,13 +144,13 @@ namespace fiz
 			glm::vec3 bitangent = glm::cross(normal, tangent);
 			glm::mat3 contact_to_world = glm::mat3(tangent, bitangent, normal);
 
-			// change in linear velocity
-			glm::mat3 delta_vel_contact = glm::mat3(inv_mass);
+			// change in velocity
+			glm::mat3 delta_vel_contact = glm::mat3(inv_mass); // linear component
 
 			glm::mat3 delta_vel_world = glm::mat3(0.0f);
 			if (!b->rotation_locked)
 			{
-				// create matrix that converts impulse to velocity in world coordinates
+				// create matrix that converts impulse at poc to velocity in world coordinates
 				glm::mat3 impulse_to_torque = createSkew(rel_poc_b);
 				delta_vel_world = b->inertia_inv_world * impulse_to_torque;
 				delta_vel_world = impulse_to_torque * delta_vel_world;

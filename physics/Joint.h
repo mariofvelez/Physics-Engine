@@ -22,7 +22,7 @@ namespace fiz
 
 		AnchoredSpringJoint(float spring_constant, float length) : spring_constant(spring_constant), length(length), local(0.0f), anchor(0.0f)
 		{
-
+			
 		}
 
 		void applyForces()
@@ -137,6 +137,29 @@ namespace fiz
 			contact.restitution = 0.0f;
 			contact.friction = 1.0f;
 			contact.solveContactDynamic();
+		}
+	};
+
+	class AnchoredRevoluteJoint : public Joint
+	{
+	public:
+		DynamicBody* body;
+		glm::vec3 local;
+		glm::vec3 local_axis;
+
+		glm::vec3 anchor;
+		glm::vec3 anchor_axis;
+
+		AnchoredRevoluteJoint() : body(nullptr), local(0.0f), local_axis(0.0f, 0.0f, 1.0f), anchor(0.0f), anchor_axis(0.0f, 0.0f, 1.0f)
+		{
+
+		}
+
+		void applyForces()
+		{
+			// position constraint
+			glm::vec3 dir = body->getWorldPos(local) - anchor;
+			body->pos -= dir;
 		}
 	};
 

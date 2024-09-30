@@ -52,14 +52,14 @@ namespace fiz
 			max.y = glm::max(max.y, vec.y);
 			max.z = glm::max(max.z, vec.z);
 		}
-		bool intersects(AABB& other)
+		bool intersects(AABB& other) const
 		{
 			bool x = max.x > other.min.x && min.x < other.max.x;
 			bool y = max.y > other.min.y && min.y < other.max.y;
 			bool z = max.z > other.min.z && min.z < other.max.z;
 			return x && y && z;
 		}
-		int maxExtent()
+		int maxExtent() const
 		{
 			glm::vec3 extent = max - min;
 			if (extent.x > extent.y)
@@ -84,6 +84,28 @@ namespace fiz
 					return 2;
 				}
 			}
+		}
+		bool intersects(const Ray* ray, glm::vec3& inv_dir, int* is_neg) const
+		{
+			float tx1 = (min.x - ray->start.x) * inv_dir.x;
+			float tx2 = (max.x - ray->start.x) * inv_dir.x;
+
+			float tmin = glm::min(tx1, tx2);
+			float tmax = glm::max(tx1, tx2);
+
+			float ty1 = (min.y - ray->start.y) * inv_dir.y;
+			float ty2 = (max.y - ray->start.y) * inv_dir.y;
+
+			tmin = glm::max(tmin, glm::min(ty1, ty2));
+			tmax = glm::min(tmax, glm::max(ty1, ty2));
+
+			float tz1 = (min.z - ray->start.z) * inv_dir.z;
+			float tz2 = (max.z - ray->start.z) * inv_dir.z;
+
+			tmin = glm::max(tmin, glm::min(tz1, tz2));
+			tmax = glm::min(tmax, glm::max(tz1, tz2));
+
+			return tmax > tmin && tmin > 0;
 		}
 	};
 
@@ -114,7 +136,7 @@ namespace fiz
 
 		virtual void computeMassProperties() {}
 
-		virtual float castRay(Ray& ray) { return 0.0f; }
+		virtual float castRay(Ray& ray) { return -1.0f; }
 	};
 
 	class Sphere final : public Shape

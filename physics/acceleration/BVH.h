@@ -44,6 +44,17 @@ namespace fiz
 		}
 	};
 
+	struct mat3x3
+	{
+		union
+		{
+			glm::vec3 a;
+			glm::vec3 b;
+			glm::vec3 c;
+			float data[9];
+		};
+	};
+
 	struct LinearBVHNode
 	{
 		AABB aabb;
@@ -75,7 +86,7 @@ namespace fiz
 
 		BVH(std::vector<T>* primitives) : primitives(primitives), mode(BVHSplitMode::MIDPOINT), is_built(false)
 		{
-
+			
 		}
 
 		void createBVH()
@@ -248,6 +259,66 @@ namespace fiz
 					current_node_index = to_visit[--to_visit_offset];
 				}
 			}
+		}
+
+		float traverse(Ray* ray)
+		{
+			float closest_hit = 9999999.9f;
+			bool hit = false;
+			glm::vec3 inv_dir = { 1.0f / ray->dir.x, 1.0f / ray->dir.y, 1.0f / ray->dir.z };
+			int is_neg[3] = { inv_dir.x < 0, inv_dir.y < 0, inv_dir.z < 0 };
+
+			int to_visit_offset = 0;
+			int current_node_index = 0;
+			int to_visit[64];
+			while (true)
+			{
+				const LinearBVHNode* node = &nodes[current_node_index];
+
+				// check ray against BVH node
+				if (node->aabb.intersects(ray, inv_dir, is_neg))
+				{
+					if (node->primitive_count > 0)
+					{
+						// intersect ray with primitives in leaf
+						for (int i = 0; i < node->primitive_count; ++i)
+						{
+							Ray r = { (*primitives)[i + node->primitive_offset].getLocalPos(ray->start),
+									  (*primitives)[i + node->primitive_offset].getLocalVec(ray->dir) };
+							float dist = (*primitives)[i + node->primitive_offset].shapes[0]->castRay(r);
+							if (dist > 0)
+							{
+								closest_hit = fmin(closest_hit, dist);
+								hit = true; // change to check against shape, update closest hit
+							}
+						}
+						if (to_visit_offset == 0)
+							break;
+						current_node_index = to_visit[--to_visit_offset];
+					}
+					else
+					{
+						// put far BVH nodes on to visit stack, advance to near node
+						if (is_neg[node->axis])
+						{
+							to_visit[to_visit_offset++] = current_node_index + 1;
+							current_node_index = node->second_child_offset;
+						}
+						else
+						{
+							to_visit[to_visit_offset++] = node->second_child_offset;
+							current_node_index = current_node_index + 1;
+						}
+					}
+				}
+				else
+				{
+					if (to_visit_offset == 0)
+						break;
+					current_node_index = to_visit[--to_visit_offset];
+				}
+			}
+			return closest_hit;
 		}
 	};
 }

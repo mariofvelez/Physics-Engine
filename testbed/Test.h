@@ -34,6 +34,8 @@ public:
 	Shape* d_8;
 	Shape* d_20;
 	Shape* car_chassis;
+	Shape* ground;
+	Shape* platform;
 
 	void initShapes(DebugRenderer* renderer)
 	{
@@ -50,6 +52,8 @@ public:
 		d_8 = renderer->loadPolyhedron("objects/d_8.obj", 15.0f);
 		d_20 = renderer->loadPolyhedron("objects/d_20.obj", 15.0f);
 		car_chassis = new Box(glm::vec3(0.0f), glm::vec3(0.4f, 0.8f, 0.4f));
+		ground = new Box(glm::vec3(0.0f), glm::vec3(50.0f, 50.0f, 0.5f));
+		platform = new Box(glm::vec3(0.0f), glm::vec3(1.0f, 2.0f, 0.1f));
 	}
 
 	void deleteShapes()
@@ -64,6 +68,8 @@ public:
 		delete(small_capsule);
 		delete(medium_capsule);
 		delete(car_chassis);
+		delete(ground);
+		delete(platform);
 	}
 };
 
@@ -674,8 +680,12 @@ class CarTest : public Test
 public:
 	const static int num_wheel_joints = 8;
 	BallJoint* wheel_joints[num_wheel_joints];
+	CarJoint* car_joint;
+	DynamicBody* chassis_body;
 
-	CarTest()
+	float steer_angle;
+
+	CarTest() : steer_angle(0.0f)
 	{
 		
 	}
@@ -683,58 +693,121 @@ public:
 	{
 		for (unsigned int i = 0; i < num_wheel_joints; ++i)
 			delete(wheel_joints[i]);
+
+		delete(car_joint);
 	}
 
 	void initialize()
 	{
-		Body* wheel_bodies[4];
-		Body* chassis_body;
-
+		//Body* wheel_bodies[4];
 		BodyDef chassis_bd;
 		chassis_bd.type = BodyType::DYNAMIC;
 		chassis_bd.shape = shapes.car_chassis;
-		chassis_bd.pos = glm::vec3(0.0f, 0.0f, 1.2f);
-		chassis_body = world.createBody(chassis_bd);
+		chassis_bd.pos = glm::vec3(0.0f, 0.0f, 2.2f);
+		chassis_bd.angular_damping = 0.99f;
+		chassis_body = (DynamicBody*)world.createBody(chassis_bd);
 
-		BodyDef wheel_bd;
-		wheel_bd.type = BodyType::DYNAMIC;
-		wheel_bd.shape = shapes.flat_cylinder;
-		wheel_bd.orientation = glm::angleAxis(glm::half_pi<float>(), glm::vec3(0.0f, -1.0f, 0.0f));
+		//BodyDef wheel_bd;
+		//wheel_bd.type = BodyType::DYNAMIC;
+		//wheel_bd.shape = shapes.flat_cylinder;
+		//wheel_bd.orientation = glm::angleAxis(glm::half_pi<float>(), glm::vec3(0.0f, -1.0f, 0.0f));
 
 		glm::vec3 wheel_pos[] = {
-			glm::vec3(-1.0f,  1.0f, 1.0f), // front left
-			glm::vec3( 1.0f,  1.0f, 1.0f), // front right
-			glm::vec3(-1.0f, -1.0f, 1.0f), // back left
-			glm::vec3( 1.0f, -1.0f, 1.0f)  // back right
+			glm::vec3(-0.5f,  0.8f, 0.0f), // front left
+			glm::vec3( 0.5f,  0.8f, 0.0f), // front right
+			glm::vec3(-0.5f, -0.8f, 0.0f), // back left
+			glm::vec3( 0.5f, -0.8f, 0.0f)  // back right
 		};
-		for (unsigned int i = 0; i < 4; ++i)
-		{
-			wheel_bd.pos = wheel_pos[i];
-			wheel_bodies[i] = world.createBody(wheel_bd);
-		}
+		//for (unsigned int i = 0; i < 4; ++i)
+		//{
+		//	wheel_bd.pos = wheel_pos[i];
+		//	wheel_bodies[i] = world.createBody(wheel_bd);
+		//}
 
-		for (unsigned int i = 0; i < 4; ++i)
-		{
-			wheel_joints[i] = new BallJoint();
-			wheel_joints[i]->a = (DynamicBody*)chassis_body;
-			wheel_joints[i]->b = (DynamicBody*)wheel_bodies[i];
-			wheel_joints[i]->local_a = wheel_pos[i] - chassis_bd.pos;
-			wheel_joints[i]->local_b = glm::vec3(0.0f);
-			world.addJoint(wheel_joints[i]);
+		//for (unsigned int i = 0; i < 4; ++i)
+		//{
+		//	wheel_joints[i] = new BallJoint();
+		//	wheel_joints[i]->a = (DynamicBody*)chassis_body;
+		//	wheel_joints[i]->b = (DynamicBody*)wheel_bodies[i];
+		//	wheel_joints[i]->local_a = wheel_pos[i] - chassis_bd.pos;
+		//	wheel_joints[i]->local_b = glm::vec3(0.0f);
+		//	world.addJoint(wheel_joints[i]);
 
-			wheel_joints[i + 4] = new BallJoint();
-			wheel_joints[i + 4]->a = (DynamicBody*)chassis_body;
-			wheel_joints[i + 4]->b = (DynamicBody*)wheel_bodies[i];
-			wheel_joints[i + 4]->local_a = wheel_pos[i] - chassis_bd.pos;
-			wheel_joints[i + 4]->local_a.x = 0;
-			wheel_joints[i + 4]->local_b = wheel_bodies[i]->getLocalVec(glm::vec3(-wheel_pos[i].x, 0.0f, 0.0f));
-			//world.addJoint(wheel_joints[i + 4]);
-		}
+		//	wheel_joints[i + 4] = new BallJoint();
+		//	wheel_joints[i + 4]->a = (DynamicBody*)chassis_body;
+		//	wheel_joints[i + 4]->b = (DynamicBody*)wheel_bodies[i];
+		//	wheel_joints[i + 4]->local_a = wheel_pos[i] - chassis_bd.pos;
+		//	wheel_joints[i + 4]->local_a.x = 0;
+		//	wheel_joints[i + 4]->local_b = wheel_bodies[i]->getLocalVec(glm::vec3(-wheel_pos[i].x, 0.0f, 0.0f));
+		//	//world.addJoint(wheel_joints[i + 4]);
+		//}
+
+		BodyDef terrain_bd;
+		terrain_bd.pos = glm::vec3(0.0f, 0.0f, 0.5f);
+		terrain_bd.shape = shapes.ground;
+		terrain_bd.type = BodyType::STATIC;
+		world.createBody(terrain_bd);
+
+		terrain_bd.shape = shapes.platform;
+		terrain_bd.pos = glm::vec3(0.0f, 4.0f, 1.5f);
+		terrain_bd.orientation = glm::angleAxis(0.3f, glm::vec3(1.0f, 0.0f, 0.0f));
+		world.createBody(terrain_bd);
+
+		terrain_bd.pos = glm::vec3(0.0f, 11.0f, 1.5f);
+		terrain_bd.orientation = glm::angleAxis(-0.3f, glm::vec3(1.0f, 0.0f, 0.0f));
+		world.createBody(terrain_bd);
+
+		car_joint = new CarJoint();
+		car_joint->body = (DynamicBody*)chassis_body;
+		for (unsigned int i = 0; i < 4; ++i)
+			car_joint->rays[i] = { wheel_pos[i], glm::vec3(0.0f, 0.0f, -1.0f) };
+		car_joint->forward[0] = glm::vec3(0.0f, 1.0f, 0.0f);
+		car_joint->forward[1] = glm::vec3(0.0f, 1.0f, 0.0f);
+		car_joint->forward[2] = glm::vec3(0.0f, 1.0f, 0.0f);
+		car_joint->forward[3] = glm::vec3(0.0f, 1.0f, 0.0f);
+		car_joint->setForce(40.0f);
+		car_joint->setMaxDist(0.8f);
+		car_joint->bvh = &world.static_bvh;
+		world.addJoint(car_joint);
+
+		world.buildBVH();
 	}
 
 	void update(float dt)
 	{
 		world.step(dt);
+	}
+
+	void processInput(GLFWwindow* window, float dt)
+	{
+		if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
+			setDriving(true);
+		else
+			setDriving(false);
+
+		float steer_amt = 0.7f;
+		steer_angle = 0.0f;
+		if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS)
+			steer_angle = -steer_amt;
+		if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+			steer_angle = steer_amt;
+
+		updateSteer();
+	}
+
+private:
+	void setDriving(bool driving)
+	{
+		car_joint->driving[2] = driving;
+		car_joint->driving[3] = driving;
+	}
+	
+	void updateSteer()
+	{
+		car_joint->forward[0].x = sinf(steer_angle);
+		car_joint->forward[0].y = cosf(steer_angle);
+		car_joint->forward[1].x = car_joint->forward[0].x;
+		car_joint->forward[1].y = car_joint->forward[0].y;
 	}
 };
 

@@ -2,6 +2,7 @@
 
 #include "Body.h"
 #include "geometry/Collision.h"
+#include "acceleration/BVH.h"
 
 namespace fiz
 {
@@ -231,6 +232,70 @@ namespace fiz
 			b->angular_vel = world_axis_b * glm::dot(b->angular_vel, world_axis_b);
 			a->setAwake();
 			b->setAwake();
+		}
+	};
+
+	class CarJoint : public Joint
+	{
+	public:
+		DynamicBody* body;
+		Ray rays[4];
+		glm::vec3 forward[4];
+
+		float max_dist[4];
+		float force[4];
+		bool driving[4];
+
+		BVH<StaticBody>* bvh;
+
+		CarJoint()
+		{
+			for (unsigned int i = 0; i < 4; ++i)
+				driving[i] = false;
+		}
+
+		void setMaxDist(float dist)
+		{
+			for (unsigned int i = 0; i < 4; ++i)
+				max_dist[i] = dist;
+		}
+
+		void setForce(float f)
+		{
+			for (unsigned int i = 0; i < 4; ++i)
+				force[i] = f;
+		}
+
+		void applyForces()
+		{
+			body->setAwake();
+			for (unsigned int i = 0; i < 4; ++i)
+			{
+				// ray in world coordinates
+				Ray r = { body->getWorldPos(rays[i].start), body->getWorldVec(rays[i].dir) };
+				float dist = bvh->traverse(&r);
+				if (dist < max_dist[i]) // wheel collision
+				{
+					// spring force
+					body->applyForceLocal(-rays[i].dir * force[i] * (max_dist[i] - dist), rays[i].start);
+
+					// damping force
+					glm::vec3 vel = body->getVelocityWorld(r.start);
+					body->applyForceLocal(-glm::dot(vel, r.dir) * r.dir * 2.0f, rays[i].start);
+
+					// normal force
+					glm::vec3 left = glm::cross(forward[i], rays[i].dir);
+					left = body->getWorldVec(left);
+					body->applyForceWorld(-glm::dot(vel, left) * left, r.start);
+
+					// driving force
+					if (driving[i])
+					{
+						glm::vec3 world_force = body->getWorldVec(forward[i]) * 3.0f;
+						body->applyForceWorld(world_force, r.start);
+					}
+				}
+			}
 		}
 	};
 }

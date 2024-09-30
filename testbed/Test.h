@@ -754,10 +754,14 @@ public:
 	{
 		BodyDef bd;
 		bd.type = BodyType::STATIC;
-		bd.shape = shapes.box;
 		bd.pos = glm::vec3(0.0f);
 		for (unsigned int i = 0; i < num_shapes; ++i)
 		{
+			if (random() < 0.5f)
+				bd.shape = shapes.box;
+			else
+				bd.shape = shapes.sphere;
+
 			bd.pos.x = random(-width * 0.5f, width * 0.5f);
 			bd.pos.y = random(-width * 0.5f, width * 0.5f);
 			bd.pos.z = random(0.0f, height);

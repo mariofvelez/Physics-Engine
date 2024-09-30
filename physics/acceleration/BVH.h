@@ -318,7 +318,7 @@ namespace fiz
 					current_node_index = to_visit[--to_visit_offset];
 				}
 			}
-			return hit ? 1 : 0;
+			return closest_hit;
 		}
 	};
 }

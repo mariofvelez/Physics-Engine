@@ -178,6 +178,21 @@ namespace fiz
 			local_products.y = 0.0f;
 			local_products.z = 0.0f;
 		}
+
+		float castRay(Ray& ray)
+		{
+			float a = glm::dot(ray.dir, ray.dir);
+			float b = 2.0f * glm::dot(ray.start - pos, ray.dir);
+			float c = glm::dot(ray.start - pos, ray.start - pos) - rad2;
+			float desc = b * b - 4.0f * a * c;
+			if (desc < 0.0f)
+				return 0.0f;
+			float t = (-b - sqrtf(desc)) / (2.0f * a);
+
+			if (t > 0.000001f)
+				return t;
+			return 0.0f;
+		}
 	private:
 		float rad2;
 	};

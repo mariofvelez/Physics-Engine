@@ -105,7 +105,7 @@ namespace fiz
 			tmin = glm::max(tmin, glm::min(tz1, tz2));
 			tmax = glm::min(tmax, glm::max(tz1, tz2));
 
-			return tmax > tmin && tmin > 0;
+			return tmax > tmin;
 		}
 	};
 

@@ -301,13 +301,13 @@ namespace fiz
 						// put far BVH nodes on to visit stack, advance to near node
 						if (is_neg[node->axis])
 						{
-							to_visit[to_visit_offset++] = current_node_index + 1;
-							current_node_index = node->second_child_offset;
+							to_visit[to_visit_offset++] = node->second_child_offset;
+							current_node_index = current_node_index + 1;
 						}
 						else
 						{
-							to_visit[to_visit_offset++] = node->second_child_offset;
-							current_node_index = current_node_index + 1;
+							to_visit[to_visit_offset++] = current_node_index + 1;
+							current_node_index = node->second_child_offset;
 						}
 					}
 				}
@@ -318,7 +318,7 @@ namespace fiz
 					current_node_index = to_visit[--to_visit_offset];
 				}
 			}
-			return closest_hit;
+			return hit ? 1 : 0;
 		}
 	};
 }

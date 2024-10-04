@@ -291,7 +291,7 @@ namespace fiz
 					// driving force
 					if (driving[i])
 					{
-						glm::vec3 world_force = body->getWorldVec(forward[i]) * 3.0f;
+						glm::vec3 world_force = body->getWorldVec(forward[i]) * 10.0f;
 						body->applyForceWorld(world_force, r.start);
 					}
 				}

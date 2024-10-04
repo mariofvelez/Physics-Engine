@@ -3,6 +3,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <random>
 
 #include <glad/glad.h>
 
@@ -23,6 +24,12 @@
 #include "../testbed/TestCamera.h"
 #include "../physics/acceleration/BVH.h"
 
+enum RenderMode
+{
+	RENDER_COLORS,
+	RENDER_SHAPES
+};
+
 class DebugRenderer
 {
 public:
@@ -34,6 +41,11 @@ public:
 
 	std::vector<fiz::Shape*> polyhedron_shapes;
 
+	std::vector<glm::vec3> static_colors;
+	std::vector<glm::vec3> dynamic_colors;
+
+	RenderMode render_mode;
+
 	bool show_contact_points;
 	bool show_contact_normals;
 	bool show_BVH;
@@ -42,28 +54,49 @@ public:
 	bool show_sleep;
 	bool outline_shapes;
 
-	DebugRenderer(fiz::World* world) : world(world), light_direction(0.0f, 0.0f, -1.0f), camera(glm::vec3(0.0f, -10.0f, 5.0f), glm::vec3(0.0f, 1.0f, -0.2f), glm::vec3(0.0f, 0.0f, 1.0f)), models(100), show_contact_points(false), show_contact_normals(false), show_BVH(false), show_velocities(false), show_aabb(false), show_sleep(false), outline_shapes(false)
+	DebugRenderer(fiz::World* world) : world(world), light_direction(0.0f, 0.0f, -1.0f), camera(glm::vec3(0.0f, -10.0f, 5.0f), glm::vec3(0.0f, 1.0f, -0.2f), glm::vec3(0.0f, 0.0f, 1.0f)), models(100), show_contact_points(false), show_contact_normals(false), show_BVH(false), show_velocities(false), show_aabb(false), show_sleep(false), outline_shapes(false), render_mode(RENDER_COLORS)
 	{
 		// generate shaders
-		shader = new Shader("shaders/Vertex.shader", "shaders/Fragment.shader");
+		shape_shader = new Shader("shaders/Vertex.shader", "shaders/Fragment.shader");
+		color_shader = new Shader("shaders/Vertex.shader", "shaders/ColorFragment.shader");
+
 		shadow_shader = new Shader("shaders/Vertex.shader", "shaders/Fragment.shader");
 
-		shader->use();
-
-		shader->setVec3("dirlight.direction", light_direction);
-
+		// dir light
 		glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
 		float ambient_strength = 0.5f;
-		shader->setVec3("dirlight.ambient", color.x * ambient_strength, color.y * ambient_strength, color.z * ambient_strength);
-		shader->setVec3("dirlight.diffuse", color.x, color.y, color.z);
-		shader->setVec3("dirlight.specular", color.x, color.y, color.z);
 
-		model_loc = shader->uniformLoc("model");
-		view_loc = shader->uniformLoc("view");
-		proj_loc = shader->uniformLoc("projection");
+		// shape shader
+		shape_shader->use();
 
-		shader->setInt("uTexture", 0);
+		shape_shader->setVec3("dirlight.direction", light_direction);
 
+		shape_shader->setVec3("dirlight.ambient", color.x * ambient_strength, color.y * ambient_strength, color.z * ambient_strength);
+		shape_shader->setVec3("dirlight.diffuse", color.x, color.y, color.z);
+		shape_shader->setVec3("dirlight.specular", color.x, color.y, color.z);
+
+		shape_model_loc = shape_shader->uniformLoc("model");
+		shape_view_loc = shape_shader->uniformLoc("view");
+		shape_proj_loc = shape_shader->uniformLoc("projection");
+
+		shape_shader->setInt("uTexture", 0);
+
+		// color shader
+		color_shader->use();
+
+		color_shader->setVec3("dirlight.direction", light_direction);
+
+		color_shader->setVec3("dirlight.ambient", color.x * ambient_strength, color.y * ambient_strength, color.z * ambient_strength);
+		color_shader->setVec3("dirlight.diffuse", color.x, color.y, color.z);
+		color_shader->setVec3("dirlight.specular", color.x, color.y, color.z);
+
+		color_model_loc = color_shader->uniformLoc("model");
+		color_view_loc = color_shader->uniformLoc("view");
+		color_proj_loc = color_shader->uniformLoc("projection");
+
+		color_color_loc = color_shader->uniformLoc("col");
+
+		// line shader
 		line_shader = new Shader("Shaders/LineVertex.shader", "Shaders/BasicFragment.shader");
 		line_shader->use();
 		line_model_loc = line_shader->uniformLoc("model");
@@ -106,10 +139,30 @@ public:
 
 	~DebugRenderer()
 	{
-		delete(shader);
+		delete(shape_shader);
+		delete(color_shader);
 		delete(line_shader);
 		delete(line_segment_shader);
 		delete(point_shader);
+	}
+
+	void randomizeColors()
+	{
+		dynamic_colors.clear();
+		static_colors.clear();
+
+		const float col_range = 0.8f;
+
+		for (unsigned int i = 0; i < world->dynamic_bodies.size(); ++i)
+		{
+			glm::vec3 col = { random() * col_range, random() * col_range, random() * col_range };
+			dynamic_colors.push_back(col + (1.0f - col_range));
+		}
+		for (unsigned int i = 0; i < world->static_bodies.size(); ++i)
+		{
+			glm::vec3 col = { random() * col_range, random() * col_range, random() * col_range };
+			static_colors.push_back(col + (1.0f - col_range));
+		}
 	}
 
 	fiz::Shape* loadPolyhedron(const std::string& filepath, float scale)
@@ -324,45 +377,40 @@ public:
 		bottom_model[3] = glm::vec4(0.0f, 0.0f, -height, 1.0f);
 		bottom_model = model * bottom_model;
 
-		shader->use();
-
-		glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
-		glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(camera.view));
-		glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm::value_ptr(camera.projection));
 
 		glBindVertexArray(models.capsule_cylinderVAO);
-		shader->setVec3("scale", rad, rad, height);
+		setShaderScale(rad, rad, height);
 		const unsigned int sides = 40;
 		unsigned int index_size = 2 * sides;
 		glDrawElements(GL_TRIANGLES, index_size * 3, GL_UNSIGNED_INT, 0);
 
-		glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(top_model));
+		if (render_mode == RenderMode::RENDER_SHAPES)
+			glUniformMatrix4fv(shape_model_loc, 1, GL_FALSE, glm::value_ptr(top_model));
+		else
+			glUniformMatrix4fv(color_model_loc, 1, GL_FALSE, glm::value_ptr(top_model));
 
 		glBindVertexArray(models.capsule_hemisphereVAO);
-		shader->setVec3("scale", rad, rad, rad);
+		setShaderScale(rad, rad, rad);
 		index_size = 2 * sides * sides;
 		glDrawElements(GL_TRIANGLES, index_size * 3, GL_UNSIGNED_INT, 0);
 
-		glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(bottom_model));
+		if (render_mode == RenderMode::RENDER_SHAPES)
+			glUniformMatrix4fv(shape_model_loc, 1, GL_FALSE, glm::value_ptr(bottom_model));
+		else
+			glUniformMatrix4fv(color_model_loc, 1, GL_FALSE, glm::value_ptr(bottom_model));
 		glDrawElements(GL_TRIANGLES, index_size * 3, GL_UNSIGNED_INT, 0);
 	}
 
 	void renderPolyhedron(glm::mat4& model, unsigned int index)
 	{
-		shader->use();
-
-		glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
-		glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(camera.view));
-		glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm::value_ptr(camera.projection));
-
 		glBindVertexArray(models.polyhedronVAO[index]);
 
-		shader->setVec3("scale", 1.0f, 1.0f, 1.0f);
+		setShaderScale(1.0f, 1.0f, 1.0f);
 
 		glDrawArrays(GL_TRIANGLES, 0, models.polyhedron_vertex_count[index]);
 	}
 
-	void renderBody(fiz::Body& body)
+	void renderBody(fiz::Body& body, unsigned int index)
 	{
 		glm::mat4 model(1.0f);
 		// ADD - rotate with body orientation
@@ -372,6 +420,28 @@ public:
 		bool is_asleep = false;
 		if (body.type == fiz::BodyType::DYNAMIC)
 			is_asleep = !((fiz::DynamicBody*)&body)->is_awake;
+
+		if (render_mode == RenderMode::RENDER_SHAPES)
+		{
+			shape_shader->use();
+
+			glUniformMatrix4fv(shape_model_loc, 1, GL_FALSE, glm::value_ptr(model));
+			glUniformMatrix4fv(shape_view_loc, 1, GL_FALSE, glm::value_ptr(camera.view));
+			glUniformMatrix4fv(shape_proj_loc, 1, GL_FALSE, glm::value_ptr(camera.projection));
+		}
+		else
+		{
+			color_shader->use();
+
+			glUniformMatrix4fv(color_model_loc, 1, GL_FALSE, glm::value_ptr(model));
+			glUniformMatrix4fv(color_view_loc, 1, GL_FALSE, glm::value_ptr(camera.view));
+			glUniformMatrix4fv(color_proj_loc, 1, GL_FALSE, glm::value_ptr(camera.projection));
+
+			if (body.type == fiz::BodyType::DYNAMIC)
+				glUniform3f(color_color_loc, dynamic_colors[index].x, dynamic_colors[index].y, dynamic_colors[index].z);
+			else
+				glUniform3f(color_color_loc, static_colors[index].x, static_colors[index].y, static_colors[index].z);
+		}
 
 		for (unsigned int j = 0; j < body.shapes.size(); ++j)
 		{
@@ -397,18 +467,13 @@ public:
 				}
 				else
 				{
-					shader->use();
-					glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
-					glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(camera.view));
-					glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm::value_ptr(camera.projection));
-
 					if (is_asleep && show_sleep)
 						glBindTexture(GL_TEXTURE_2D, models.sleep_texture);
 					else
 						glBindTexture(GL_TEXTURE_2D, models.sphere_texture);
 					glBindVertexArray(models.sphereVAO);
 
-					shader->setVec3("scale", sphere->rad, sphere->rad, sphere->rad);
+					setShaderScale(sphere->rad, sphere->rad, sphere->rad);
 
 					glDrawElements(GL_TRIANGLES, 6 * 20 * 20, GL_UNSIGNED_INT, 0);
 				}
@@ -421,11 +486,6 @@ public:
 				fiz::Box* box = (fiz::Box*)shape;
 				glm::vec3 center = box->pos;
 				glm::vec3 scale = box->dim * 2.0f;
-
-				shader->use();
-				glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
-				glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(camera.view));
-				glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm::value_ptr(camera.projection));
 
 				if (outline_shapes)
 				{
@@ -441,18 +501,13 @@ public:
 				}
 				else
 				{
-					shader->use();
-
 					if (is_asleep && show_sleep)
 						glBindTexture(GL_TEXTURE_2D, models.sleep_texture);
 					else
 						glBindTexture(GL_TEXTURE_2D, models.box_texture);
 					glBindVertexArray(models.boxVAO);
 
-
-					glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
-
-					shader->setVec3("scale", scale.x, scale.y, scale.z);
+					setShaderScale(scale.x, scale.y, scale.z);
 
 					glDrawArrays(GL_TRIANGLES, 0, 36);
 				}
@@ -460,11 +515,6 @@ public:
 			}
 			case fiz::CYLINDER_TYPE:
 			{
-				shader->use();
-				glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
-				glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(camera.view));
-				glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm::value_ptr(camera.projection));
-
 				if (is_asleep && show_sleep)
 					glBindTexture(GL_TEXTURE_2D, models.sleep_texture);
 				else
@@ -472,7 +522,7 @@ public:
 				glBindVertexArray(models.cylinderVAO);
 
 				fiz::Cylinder* cylinder = (fiz::Cylinder*)shape;
-				shader->setVec3("scale", cylinder->rad, cylinder->rad, cylinder->height);
+				setShaderScale(cylinder->rad, cylinder->rad, cylinder->height);
 
 				const unsigned int sides = 40;
 				const unsigned int index_size = 2 * sides + 2 * (sides - 2);
@@ -580,9 +630,17 @@ public:
 		// draw all shapes to shadow map
 		// draw all shapes to the scene
 
-		shader->use();
-
-		shader->setVec3("viewPos", camera.m_pos);
+		if (render_mode == RenderMode::RENDER_SHAPES)
+		{
+			shape_shader->use();
+			shape_shader->setVec3("viewPos", camera.m_pos);
+		}
+		else
+		{
+			color_shader->use();
+			color_shader->setVec3("viewPos", camera.m_pos);
+		}
+		
 
 		camera.updateView();
 		camera.updateProjection(900.0f / 600.0f);
@@ -590,13 +648,13 @@ public:
 		for (unsigned int i = 0; i < world->dynamic_bodies.size(); ++i)
 		{
 			fiz::Body& body = world->dynamic_bodies[i];
-			renderBody(body);
+			renderBody(body, i);
 		}
 
 		for (unsigned int i = 0; i < world->static_bodies.size(); ++i)
 		{
 			fiz::Body& body = world->static_bodies[i];
-			renderBody(body);
+			renderBody(body, i);
 		}
 
 		for (unsigned int i = 0; i < world->contacts.size(); ++i)
@@ -649,11 +707,24 @@ public:
 		}
 
 		// reset uniforms
-		shader->use();
 		glm::mat4 model(1.0f);
-		glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
-		shader->setVec3("scale", 1.0f, 1.0f, 1.0f);
-		glBindTexture(GL_TEXTURE_2D, models.box_texture);
+		if (render_mode == RenderMode::RENDER_SHAPES)
+		{
+			shape_shader->use();
+
+			glUniformMatrix4fv(shape_model_loc, 1, GL_FALSE, glm::value_ptr(model));
+			shape_shader->setVec3("scale", 1.0f, 1.0f, 1.0f);
+			glBindTexture(GL_TEXTURE_2D, models.box_texture);
+		}
+		else
+		{
+			color_shader->use();
+
+			glUniformMatrix4fv(color_model_loc, 1, GL_FALSE, glm::value_ptr(model));
+			color_shader->setVec3("scale", 1.0f, 1.0f, 1.0f);
+			glBindTexture(GL_TEXTURE_2D, models.box_texture);
+		}
+		
 	}
 
 	void processInput(GLFWwindow* window, float delta_time)
@@ -662,7 +733,9 @@ public:
 	}
 
 private:
-	Shader* shader;
+	Shader* shape_shader;
+	Shader* color_shader;
+
 	Shader* line_shader;
 	Shader* shadow_shader;
 	Shader* line_segment_shader;
@@ -671,10 +744,16 @@ private:
 
 	glm::vec3 light_direction; // directional light
 
-	unsigned int model_loc;
-	unsigned int view_loc;
-	unsigned int proj_loc;
-	unsigned int scale_loc;
+	unsigned int shape_model_loc;
+	unsigned int shape_view_loc;
+	unsigned int shape_proj_loc;
+	unsigned int shape_scale_loc;
+
+	unsigned int color_model_loc;
+	unsigned int color_view_loc;
+	unsigned int color_proj_loc;
+	unsigned int color_scale_loc;
+	unsigned int color_color_loc;
 
 	unsigned int line_model_loc;
 	unsigned int line_view_loc;
@@ -699,4 +778,21 @@ private:
 	unsigned int edge_plane_pos_loc[4];
 	unsigned int edge_plane_opacity_loc[4];
 	unsigned int edge_plane_color_loc;
+
+	inline float random()
+	{
+		return (float)(rand() % 1000) / 1000.0f;
+	}
+	inline float random(float min, float max)
+	{
+		return min + random() * (max - min);
+	}
+
+	inline void setShaderScale(float x, float y, float z)
+	{
+		if (render_mode == RenderMode::RENDER_SHAPES)
+			shape_shader->setVec3("scale", x, y, z);
+		else
+			color_shader->setVec3("scale", x, y, z);
+	}
 };

@@ -123,6 +123,20 @@ public:
 		ImGui::Checkbox("Show Sleep State", &renderer.show_sleep);
 		ImGui::Checkbox("Render Outlines", &renderer.outline_shapes);
 
+		static int render_mode = 0;
+		ImGui::Text("Render Mode: ");
+		ImGui::RadioButton("Render Shapes", &render_mode, 0);
+		ImGui::RadioButton("Render Colors", &render_mode, 1);
+
+		switch (render_mode)
+		{
+		case 0:
+			renderer.render_mode = RenderMode::RENDER_SHAPES;
+			break;
+		case 1:
+			renderer.render_mode = RenderMode::RENDER_COLORS;
+		}
+
 		if (paused)
 		ImGui::Text("PAUSED");
 		else
@@ -258,6 +272,7 @@ public:
 		curr_test->setRenderer(&renderer);
 		test->initialize();
 		renderer.world = &curr_test->world;
+		renderer.randomizeColors();
 		swapping_test = false;
 	}
 

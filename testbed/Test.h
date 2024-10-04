@@ -705,6 +705,7 @@ public:
 		chassis_bd.shape = shapes.car_chassis;
 		chassis_bd.pos = glm::vec3(0.0f, 0.0f, 2.2f);
 		chassis_bd.angular_damping = 0.99f;
+		chassis_bd.linear_damping = 0.999f;
 		chassis_body = (DynamicBody*)world.createBody(chassis_bd);
 
 		//BodyDef wheel_bd;

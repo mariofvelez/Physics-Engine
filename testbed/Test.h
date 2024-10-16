@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <iostream>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -831,10 +832,13 @@ public:
 		bd.pos = glm::vec3(0.0f);
 		for (unsigned int i = 0; i < num_shapes; ++i)
 		{
-			if (random() < 0.5f)
+			float r = random();
+			if (r < 0.33f)
 				bd.shape = shapes.box;
-			else
+			else if (r < 0.67f)
 				bd.shape = shapes.sphere;
+			else
+				bd.shape = shapes.d_20;
 
 			bd.pos.x = random(-width * 0.5f, width * 0.5f);
 			bd.pos.y = random(-width * 0.5f, width * 0.5f);

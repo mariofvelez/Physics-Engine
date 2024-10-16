@@ -285,6 +285,120 @@ public:
 		//glDeleteTextures(1, )
 	}
 
+	std::vector<fiz::Polyhedron> loadPolyhedronAndDecompose(const std::string& filepath)
+	{
+		std::vector<fiz::Polyhedron> polyhedra;
+
+		std::string text;
+		std::ifstream file(filepath);
+
+		std::vector<glm::vec3> vertices;
+		std::vector<glm::vec3> normals;
+		std::vector<glm::vec2> textures;
+
+		std::vector<glm::uvec3> faces;
+
+		std::vector<float> vertex_buffer;
+		unsigned int vertex_count = 0;
+
+		while (std::getline(file, text))
+		{
+			// split current line into tokens
+			unsigned int token_length = 0;
+			std::string tokens[8];
+
+			std::stringstream ss(text);
+			while (ss >> tokens[token_length])
+				token_length++;
+
+			if (token_length == 0)
+				continue;
+
+			if (tokens[0] == "v")
+			{
+				float x = std::stof(tokens[1]);
+				float y = std::stof(tokens[2]);
+				float z = std::stof(tokens[3]);
+
+				glm::vec3 vertex = glm::vec3(x, y, z);
+				vertices.push_back(vertex);
+			}
+			else if (tokens[0] == "vt")
+			{
+				float u = std::stof(tokens[1]);
+				float v = std::stof(tokens[2]);
+
+				glm::vec2 texture = glm::vec2(u, v);
+				textures.push_back(texture);
+			}
+			else if (tokens[0] == "vn")
+			{
+				float x = std::stof(tokens[1]);
+				float y = std::stof(tokens[2]);
+				float z = std::stof(tokens[3]);
+
+				glm::vec3 vertex = glm::vec3(x, y, z);
+				normals.push_back(vertex);
+			}
+			else if (tokens[0] == "f")
+			{
+				int slash_loc = tokens[1].find("/");
+				int slash_loc_next = tokens[1].find("/", slash_loc + 1);
+				int v1 = std::stoi(tokens[1].substr(0, slash_loc)) - 1;
+				int t1 = std::stoi(tokens[1].substr(slash_loc + 1, slash_loc_next)) - 1;
+				int vn1 = std::stoi(tokens[1].substr(slash_loc_next + 1, std::string::npos)) - 1;
+
+				slash_loc = tokens[2].find("/");
+				slash_loc_next = tokens[2].find("/", slash_loc + 1);
+				int v2 = std::stoi(tokens[2].substr(0, slash_loc)) - 1;
+				int t2 = std::stoi(tokens[2].substr(slash_loc + 1, slash_loc_next)) - 1;
+				int vn2 = std::stoi(tokens[2].substr(slash_loc_next + 1, std::string::npos)) - 1;
+
+				slash_loc = tokens[3].find("/");
+				slash_loc_next = tokens[3].find("/", slash_loc + 1);
+				int v3 = std::stoi(tokens[3].substr(0, slash_loc)) - 1;
+				int t3 = std::stoi(tokens[3].substr(slash_loc + 1, slash_loc_next)) - 1;
+				int vn3 = std::stoi(tokens[3].substr(slash_loc_next + 1, std::string::npos)) - 1;
+
+				vertex_buffer.push_back(vertices[v1].x);
+				vertex_buffer.push_back(vertices[v1].y);
+				vertex_buffer.push_back(vertices[v1].z);
+				vertex_buffer.push_back(normals[vn1].x);
+				vertex_buffer.push_back(normals[vn1].y);
+				vertex_buffer.push_back(normals[vn1].z);
+				vertex_buffer.push_back(textures[t1].x);
+				vertex_buffer.push_back(textures[t1].y);
+
+				vertex_buffer.push_back(vertices[v2].x);
+				vertex_buffer.push_back(vertices[v2].y);
+				vertex_buffer.push_back(vertices[v2].z);
+				vertex_buffer.push_back(normals[vn2].x);
+				vertex_buffer.push_back(normals[vn2].y);
+				vertex_buffer.push_back(normals[vn2].z);
+				vertex_buffer.push_back(textures[t2].x);
+				vertex_buffer.push_back(textures[t2].y);
+
+				vertex_buffer.push_back(vertices[v3].x);
+				vertex_buffer.push_back(vertices[v3].y);
+				vertex_buffer.push_back(vertices[v3].z);
+				vertex_buffer.push_back(normals[vn3].x);
+				vertex_buffer.push_back(normals[vn3].y);
+				vertex_buffer.push_back(normals[vn3].z);
+				vertex_buffer.push_back(textures[t3].x);
+				vertex_buffer.push_back(textures[t3].y);
+
+				glm::uvec3 face = glm::uvec3(v1, v2, v3);
+				faces.push_back(face);
+
+				vertex_count += 3;
+			}
+		}
+
+
+
+		return polyhedra;
+	}
+
 	fiz::Shape* loadPolyhedron(const std::string& filepath, float scale)
 	{
 		std::string text;

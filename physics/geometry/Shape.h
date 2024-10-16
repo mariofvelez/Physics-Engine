@@ -547,6 +547,49 @@ namespace fiz
 			for (unsigned int i = 0; i < vertices.size(); ++i)
 				vertices[i] -= centroid;
 		}
+
+		float castRay(Ray& ray)
+		{
+			float closest_hit = 9999999.9f;
+			for (unsigned int i = 0; i < indices.size(); ++i)
+			{
+				const glm::vec3& a = vertices[indices[i].x];
+				const glm::vec3& b = vertices[indices[i].y];
+				const glm::vec3& c = vertices[indices[i].z];
+
+				glm::vec3 e1 = b - a;
+				glm::vec3 e2 = c - a;
+
+				glm::vec3 ray_cross_e2 = glm::cross(ray.dir, e2);
+
+				float det = glm::dot(e1, ray_cross_e2);
+
+				if (det > -0.000001f && det < 0.0000001f)
+					continue;
+
+				float inv_det = 1.0f / det;
+				glm::vec3 s = ray.start - a;
+
+				float u = inv_det * glm::dot(s, ray_cross_e2);
+
+				if (u < 0 || u > 1)
+					continue;
+
+				glm::vec3 s_cross_e1 = glm::cross(s, e1);
+
+				float v = inv_det * glm::dot(ray.dir, s_cross_e1);
+
+				if (v < 0 || u + v > 1.0f)
+					continue;
+
+				float t = inv_det * glm::dot(e2, s_cross_e1);
+
+				if (t > 0.000001f)
+					closest_hit = t;
+			}
+			return closest_hit < 9999999.9f ? closest_hit : 0.0f;
+		}
+
 	private:
 		inline void subexpr(float w0, float w1, float w2, float& f1, float& f2, float& f3, float& g0, float& g1, float& g2)
 		{

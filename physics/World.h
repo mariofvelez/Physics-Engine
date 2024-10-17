@@ -31,7 +31,10 @@ namespace fiz
 
 		glm::vec3 gravity;
 
-		World() : gravity(0.0f, 0.0f, -9.8f), iters(4), static_bvh(&static_bodies)
+		void (*static_dynamic_collision_listener)(ContactInfo*);
+		void (*dynamic_dynamic_collision_listener)(ContactInfo*);
+
+		World() : gravity(0.0f, 0.0f, -9.8f), iters(4), static_bvh(&static_bodies), static_dynamic_collision_listener(nullptr), dynamic_dynamic_collision_listener(nullptr)
 		{
 			shapes.reserve(10);
 			dynamic_bodies.reserve(600);
@@ -139,7 +142,11 @@ namespace fiz
 						{
 							ContactInfo contact = checkCollisionSphereSphere(&dynamic_bodies[i], &dynamic_bodies[j]);
 							if (contact.collided)
+							{
+								if (dynamic_dynamic_collision_listener != nullptr)
+									dynamic_dynamic_collision_listener(&contact);
 								contact.solveContactDynamic();
+							}
 						}
 						else
 						{
@@ -148,7 +155,11 @@ namespace fiz
 							{
 								ContactInfo contact = EPA(&dynamic_bodies[i], &dynamic_bodies[j]);
 								if (contact.collided)
+								{
+									if (dynamic_dynamic_collision_listener != nullptr)
+										dynamic_dynamic_collision_listener(&contact);
 									contact.solveContactDynamic();
+								}
 							}
 						}
 					}
@@ -252,7 +263,11 @@ namespace fiz
 			{
 				ContactInfo contact = checkCollisionSphereSphere(&static_body, &dynamic_body);
 				if (contact.collided)
+				{
+					if (static_dynamic_collision_listener != nullptr)
+						static_dynamic_collision_listener(&contact);
 					contact.solveContactStatic();
+				}
 			}
 			else
 			{
@@ -261,7 +276,11 @@ namespace fiz
 				{
 					ContactInfo contact = EPA(&static_body, &dynamic_body);
 					if (contact.collided)
+					{
+						if (static_dynamic_collision_listener != nullptr)
+							static_dynamic_collision_listener(&contact);
 						contact.solveContactStatic();
+					}
 				}
 			}
 		}

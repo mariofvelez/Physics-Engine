@@ -409,6 +409,8 @@ public:
 		bd.linear_damping = 1.0f;
 		bd.angular_damping = 1.0f;
 		world.createBody(bd);
+
+		world.dynamic_dynamic_collision_listener = [](ContactInfo* info) { std::cout << "collided" << std::endl; };
 	}
 };
 

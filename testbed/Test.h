@@ -37,6 +37,7 @@ public:
 	Shape* car_chassis;
 	Shape* ground;
 	Shape* platform;
+	Shape* bowling_ball;
 
 	void initShapes(DebugRenderer* renderer)
 	{
@@ -55,6 +56,7 @@ public:
 		car_chassis = new Box(glm::vec3(0.0f), glm::vec3(0.4f, 0.8f, 0.4f));
 		ground = new Box(glm::vec3(0.0f), glm::vec3(50.0f, 50.0f, 0.5f));
 		platform = new Box(glm::vec3(0.0f), glm::vec3(1.0f, 2.0f, 0.1f));
+		bowling_ball = new Sphere(glm::vec3(0.0f), 0.7f);
 	}
 
 	void deleteShapes()
@@ -71,6 +73,7 @@ public:
 		delete(car_chassis);
 		delete(ground);
 		delete(platform);
+		delete(bowling_ball);
 	}
 };
 
@@ -401,7 +404,7 @@ public:
 			world.createBody(bd);
 		}
 
-		bd.shape = new Sphere(glm::vec3(0.0f), 0.7f);
+		bd.shape = shapes.bowling_ball;
 		bd.pos = glm::vec3(0.0f, -2.0f, 1.5f);
 		bd.friction = 0.1f;
 		bd.vel = glm::vec3(1.0f, 10.0f, 0.0f);
@@ -410,7 +413,9 @@ public:
 		bd.angular_damping = 1.0f;
 		world.createBody(bd);
 
-		world.dynamic_dynamic_collision_listener = [](ContactInfo* info) { std::cout << "collided" << std::endl; };
+		world.dynamic_dynamic_collision_listener = [](ContactInfo* info) {
+			std::cout << "collided: " << info->body_a << " & " << info->body_b << std::endl;
+		};
 	}
 };
 
@@ -835,12 +840,14 @@ public:
 		for (unsigned int i = 0; i < num_shapes; ++i)
 		{
 			float r = random();
-			if (r < 0.33f)
+			if (r < 0.25f)
 				bd.shape = shapes.box;
-			else if (r < 0.67f)
+			else if (r < 0.5f)
 				bd.shape = shapes.sphere;
-			else
+			else if (r < 0.75f)
 				bd.shape = shapes.d_20;
+			else
+				bd.shape = shapes.long_cylinder;
 
 			bd.pos.x = random(-width * 0.5f, width * 0.5f);
 			bd.pos.y = random(-width * 0.5f, width * 0.5f);

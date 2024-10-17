@@ -363,6 +363,53 @@ namespace fiz
 			local_products.y = 0.0f;
 			local_products.z = 0.0f;
 		}
+
+		float castRay(Ray& ray)
+		{
+			float a = ray.dir.x * ray.dir.x + ray.dir.y * ray.dir.y;
+			float b = 2.0f * (ray.start.x * ray.dir.x + ray.start.y * ray.dir.y);
+			float c = ray.start.x * ray.start.x + ray.start.y * ray.start.y - rad * rad;
+
+			float desc = b * b - 4.0f * a * c;
+			if (desc < 0.0f)
+				return 0.0f;
+			float t = (-b - sqrtf(desc)) / (2.0f * a);
+
+			if (t > 0.000001f)
+			{
+				float h = ray.start.z + t * ray.dir.z;
+				if (h > height)
+				{
+					// check top
+					// find intersection with z = height
+					// height = o + dt
+					// t = (height - o) / d
+					float t2 = (height - ray.start.z) / ray.dir.z;
+					float tx = ray.start.x + t2 * ray.dir.x;
+					float ty = ray.start.y + t2 * ray.dir.y;
+					if (tx * tx + ty * ty < rad * rad)
+						return t2;
+					return 0.0f;
+				}
+				else if (h < -height)
+				{
+					// check bottom
+					// find intersection with z = -height
+					// -height = o + dt
+					// t = (-height - o) / d
+					float t2 = (-height - ray.start.z) / ray.dir.z;
+					float tx = ray.start.x + t2 * ray.dir.x;
+					float ty = ray.start.y + t2 * ray.dir.y;
+					if (tx * tx + ty * ty < rad * rad)
+						return t2;
+					return 0.0f;
+				}
+				else
+					return t;
+			}
+			
+			return 0.0f;
+		}
 	};
 
 	class Capsule final : public Shape

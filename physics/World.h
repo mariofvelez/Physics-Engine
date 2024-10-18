@@ -83,6 +83,7 @@ namespace fiz
 				body->orientation = bd.orientation;
 				body->restitution = bd.restitution;
 				body->friction = bd.friction;
+				body->is_sensor = bd.is_sensor;
 				body->addShape(bd.shape);
 
 				body->updateOrientationMat();
@@ -266,7 +267,8 @@ namespace fiz
 				{
 					if (static_dynamic_collision_listener != nullptr)
 						static_dynamic_collision_listener(&contact);
-					contact.solveContactStatic();
+					if (!static_body.is_sensor)
+						contact.solveContactStatic();
 				}
 			}
 			else
@@ -279,7 +281,8 @@ namespace fiz
 					{
 						if (static_dynamic_collision_listener != nullptr)
 							static_dynamic_collision_listener(&contact);
-						contact.solveContactStatic();
+						if (!static_body.is_sensor)
+							contact.solveContactStatic();
 					}
 				}
 			}

@@ -27,9 +27,11 @@ namespace fiz
 
 		bool rotation_locked;
 
+		bool is_sensor;
+
 		Shape* shape;
 
-		BodyDef() : type(BodyType::DYNAMIC), pos(0.0f), vel(0.0f), orientation(0.0f, 0.0f, 0.0f, 0.0f), angular_vel(0.0f), linear_damping(1.0f), angular_damping(1.0f), density(1.0f), friction(0.2f), restitution(0.2f), rotation_locked(false), shape(nullptr)
+		BodyDef() : type(BodyType::DYNAMIC), pos(0.0f), vel(0.0f), orientation(0.0f, 0.0f, 0.0f, 0.0f), angular_vel(0.0f), linear_damping(1.0f), angular_damping(1.0f), density(1.0f), friction(0.2f), restitution(0.2f), rotation_locked(false), is_sensor(false), shape(nullptr)
 		{
 
 		}

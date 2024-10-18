@@ -32,11 +32,13 @@ namespace fiz
 		AABB aabb;
 		std::vector<Shape*> shapes;
 
+		int user_data;
+
 		Body() : Body(glm::vec3(0.0f))
 		{
 
 		}
-		Body(glm::vec3 pos) : pos(pos), orientation(0.0f, 0.0f, 0.0f, 0.0f), orientation_mat(1.0f), orientation_mat_inv(1.0f), friction(0.2f), restitution(0.2f)
+		Body(glm::vec3 pos) : pos(pos), orientation(0.0f, 0.0f, 0.0f, 0.0f), orientation_mat(1.0f), orientation_mat_inv(1.0f), friction(0.2f), restitution(0.2f), user_data(0)
 		{
 
 		}
@@ -87,11 +89,13 @@ namespace fiz
 	class StaticBody : public Body
 	{
 	public:
+		bool is_sensor;
+
 		StaticBody() : StaticBody(glm::vec3(0.0f))
 		{
 			type = STATIC;
 		}
-		StaticBody(glm::vec3 pos) : Body(pos)
+		StaticBody(glm::vec3 pos) : Body(pos), is_sensor(false)
 		{
 			type = STATIC;
 		}

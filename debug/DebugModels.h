@@ -637,7 +637,7 @@ public:
 			glGenVertexArrays(1, &VAO);
 			glBindVertexArray(VAO);
 
-			glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(Vertex) * vertex_buffer.size(), vertex_buffer.data(), GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertex_buffer.size(), vertex_buffer.data(), GL_STATIC_DRAW);
 
 			// vertex positions
 			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);

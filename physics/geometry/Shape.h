@@ -631,7 +631,7 @@ namespace fiz
 
 				float t = inv_det * glm::dot(e2, s_cross_e1);
 
-				if (t > 0.000001f)
+				if (t > 0.000001f && t < closest_hit)
 					closest_hit = t;
 			}
 			return closest_hit < 9999999.9f ? closest_hit : 0.0f;

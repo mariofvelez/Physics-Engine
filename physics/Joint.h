@@ -240,11 +240,15 @@ namespace fiz
 	public:
 		DynamicBody* body;
 		Ray rays[4];
+		Ray r[4];
+		float dist[4];
 		glm::vec3 forward[4];
 
-		float max_dist[4];
-		float force[4];
-		bool driving[4];
+		float max_dist;  // max spring distance
+		float force;     // spring force
+		bool driving[4]; // if wheel drives
+
+		float vel = 1.0f;
 
 		BVH<StaticBody>* bvh;
 
@@ -256,14 +260,12 @@ namespace fiz
 
 		void setMaxDist(float dist)
 		{
-			for (unsigned int i = 0; i < 4; ++i)
-				max_dist[i] = dist;
+			max_dist = dist;
 		}
 
 		void setForce(float f)
 		{
-			for (unsigned int i = 0; i < 4; ++i)
-				force[i] = f;
+			force = f;
 		}
 
 		void applyForces()
@@ -272,27 +274,27 @@ namespace fiz
 			for (unsigned int i = 0; i < 4; ++i)
 			{
 				// ray in world coordinates
-				Ray r = { body->getWorldPos(rays[i].start), body->getWorldVec(rays[i].dir) };
-				float dist = bvh->traverse(&r);
-				if (dist < max_dist[i]) // wheel collision
+				r[i] = {body->getWorldPos(rays[i].start), body->getWorldVec(rays[i].dir)};
+				dist[i] = bvh->traverse(&r[i]);
+				if (dist[i] < max_dist) // wheel collision
 				{
 					// spring force
-					body->applyForceLocal(-rays[i].dir * force[i] * (max_dist[i] - dist), rays[i].start);
+					body->applyForceLocal(-r[i].dir * force * (max_dist - dist[i]), rays[i].start);
 
 					// damping force
-					glm::vec3 vel = body->getVelocityWorld(r.start);
-					body->applyForceLocal(-glm::dot(vel, r.dir) * r.dir * 2.0f, rays[i].start);
+					glm::vec3 vel = body->getVelocityWorld(r[i].start);
+					body->applyForceLocal(-glm::dot(vel, r[i].dir) * r[i].dir * 4.0f, rays[i].start);
 
 					// normal force
 					glm::vec3 left = glm::cross(forward[i], rays[i].dir);
 					left = body->getWorldVec(left);
-					body->applyForceWorld(-glm::dot(vel, left) * left, r.start);
+					body->applyForceWorld(-glm::dot(vel, left) * left, r[i].start);
 
 					// driving force
 					if (driving[i])
 					{
 						glm::vec3 world_force = body->getWorldVec(forward[i]) * 10.0f;
-						body->applyForceWorld(world_force, r.start);
+						body->applyForceWorld(world_force, r[i].start);
 					}
 				}
 			}

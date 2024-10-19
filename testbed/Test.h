@@ -797,6 +797,12 @@ public:
 
 	void update(float dt)
 	{
+		renderer->camera.m_pos = chassis_body->pos - 7.0f * renderer->camera.m_front;
+		renderer->camera.m_pos.z += 2.0f;
+		glm::vec3 dir = chassis_body->getWorldVec(glm::vec3(0.0f, 1.0f, 0.0f));
+		dir.z = 0.0f;
+		dir = glm::normalize(dir);
+		renderer->camera.m_front = dir;
 		world.step(dt);
 	}
 
@@ -815,6 +821,24 @@ public:
 			steer_angle = steer_amt;
 
 		updateSteer();
+	}
+
+	void renderDebug(DebugRenderer* renderer)
+	{
+		renderer->setLineSegmentColor(glm::vec3(0.0f, 1.0f, 1.0f));
+		for (unsigned int i = 0; i < 4; ++i)
+		{
+			Ray& ray = car_joint->r[i];
+			float dist = car_joint->dist[i];
+			if (dist < car_joint->max_dist)
+				renderer->setSphereColor(glm::vec3(0.0f, 1.0f, 1.0f));
+			else
+				renderer->setSphereColor(glm::vec3(1.0f, 0.0f, 0.0f));
+
+			glm::vec3 end = ray.start + ray.dir * glm::min(dist, car_joint->max_dist);
+			renderer->renderLineSegment(ray.start, end);
+			renderer->renderSphere(end, 0.05f);
+		}
 	}
 
 private:

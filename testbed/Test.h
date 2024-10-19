@@ -38,6 +38,7 @@ public:
 	Shape* ground;
 	Shape* platform;
 	Shape* bowling_ball;
+	std::vector<Shape*> road_shapes;
 
 	void initShapes(DebugRenderer* renderer)
 	{
@@ -57,6 +58,7 @@ public:
 		ground = new Box(glm::vec3(0.0f), glm::vec3(50.0f, 50.0f, 0.5f));
 		platform = new Box(glm::vec3(0.0f), glm::vec3(1.0f, 2.0f, 0.1f));
 		bowling_ball = new Sphere(glm::vec3(0.0f), 0.7f);
+		road_shapes = renderer->loadPolyhedra("objects/race_track.obj", 1.0f);
 	}
 
 	void deleteShapes()
@@ -74,6 +76,9 @@ public:
 		delete(ground);
 		delete(platform);
 		delete(bowling_ball);
+
+		for (unsigned int i = 0; i < road_shapes.size(); ++i)
+			delete(road_shapes[i]);
 	}
 };
 
@@ -765,6 +770,14 @@ public:
 		terrain_bd.pos = glm::vec3(0.0f, 11.0f, 1.5f);
 		terrain_bd.orientation = glm::angleAxis(-0.3f, glm::vec3(1.0f, 0.0f, 0.0f));
 		world.createBody(terrain_bd);
+
+		terrain_bd.pos = glm::vec3(0.0f);
+		terrain_bd.orientation = glm::angleAxis(0.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+		for (unsigned int i = 0; i < shapes.road_shapes.size(); ++i)
+		{
+			terrain_bd.shape = shapes.road_shapes[i];
+			world.createBody(terrain_bd);
+		}
 
 		car_joint = new CarJoint();
 		car_joint->body = (DynamicBody*)chassis_body;

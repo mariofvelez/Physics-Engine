@@ -4,13 +4,44 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include <glad/glad.h>
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/hash.hpp>
 
 #include "../stb_image.h"
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
+
+struct Vertex
+{
+	glm::vec3 pos;
+	glm::vec3 norm;
+	glm::vec2 tex;
+
+	bool operator==(const Vertex& other) const
+	{
+		return pos == other.pos;
+	}
+};
+
+namespace std
+{
+	template<> struct hash<Vertex>
+	{
+		size_t operator()(Vertex const& vertex) const
+		{
+			return ((hash<glm::vec3>()(vertex.pos) ^
+				(hash<glm::vec3>()(vertex.norm) << 1)) >> 1) ^
+				(hash<glm::vec2>()(vertex.tex) << 1);
+		}
+	};
+}
 
 class DebugModels
 {
@@ -542,6 +573,102 @@ public:
 		polyhedron_vertex_count.push_back(vertex_count);
 
 		return (fiz::Shape*)shape;
+	}
+
+	std::vector<fiz::Shape*> loadPolyhedra(const std::string& filepath)
+	{
+		std::vector<fiz::Shape*> poly_shapes;
+
+		tinyobj::attrib_t attrib;
+		std::vector<tinyobj::shape_t> shapes;
+		std::vector<tinyobj::material_t> materials;
+		std::string warn, err;
+
+		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filepath.c_str()))
+			throw std::runtime_error(warn + err);
+
+		for (unsigned int i = 0; i < shapes.size(); ++i)
+		{
+			std::vector<Vertex> vertex_buffer; // for model
+
+			std::vector<glm::vec3> vertices; // for rigid body
+			std::unordered_map<glm::vec3, unsigned int> unique_vertices; // map to get the index of the vertex
+
+			std::vector<unsigned int> indices;
+
+			for (const auto& index : shapes[i].mesh.indices)
+			{
+				glm::vec3 pos = {
+					attrib.vertices[3 * index.vertex_index + 0],
+					-attrib.vertices[3 * index.vertex_index + 2],
+					attrib.vertices[3 * index.vertex_index + 1]
+				};
+
+				glm::vec3 norm = {
+					attrib.normals[3 * index.normal_index + 0],
+					-attrib.normals[3 * index.normal_index + 2],
+					attrib.normals[3 * index.normal_index + 1]
+				};
+
+				glm::vec2 tex = {
+					attrib.texcoords[2 * index.texcoord_index + 0],
+					attrib.texcoords[2 * index.texcoord_index + 1]
+				};
+
+				Vertex vertex = { pos, norm, tex };
+
+				if (unique_vertices.count(vertex.pos) == 0) // if there is a new vertex
+				{
+					unique_vertices[vertex.pos] = vertices.size(); // add it to unique vertices
+					vertices.push_back(vertex.pos);
+				}
+
+				vertex_buffer.push_back({ pos, norm, tex });
+
+				// get index that vertex is at
+				indices.push_back(unique_vertices[vertex.pos]);
+			}
+
+			unsigned int VBO;
+			glGenBuffers(1, &VBO);
+			glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+			unsigned int VAO;
+			glGenVertexArrays(1, &VAO);
+			glBindVertexArray(VAO);
+
+			glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(Vertex) * vertex_buffer.size(), vertex_buffer.data(), GL_STATIC_DRAW);
+
+			// vertex positions
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+			glEnableVertexAttribArray(0);
+
+			// vertex normals
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+			glEnableVertexAttribArray(1);
+
+			// vertex texture coordinates
+			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+			glEnableVertexAttribArray(2);
+
+			fiz::Polyhedron* shape = new fiz::Polyhedron(vertices.size());
+
+			for (unsigned int i = 0; i < vertices.size(); ++i)
+				shape->addVertex(vertices[i]);
+
+			for (unsigned int i = 0; i < indices.size() / 3; ++i)
+			{
+				glm::uvec3 ind = { indices[3 * i], indices[3 * i + 1], indices[3 * i + 2] };
+				shape->addIndex(ind);
+			}
+
+			polyhedronVAO.push_back(VAO);
+			polyhedron_vertex_count.push_back(vertex_buffer.size());
+
+			poly_shapes.push_back((fiz::Shape*)shape);
+		}
+
+		return poly_shapes;
 	}
 
 private:

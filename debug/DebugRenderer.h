@@ -172,6 +172,14 @@ public:
 		return polyhedron_shape;
 	}
 
+	std::vector<fiz::Shape*> loadPolyhedra(const std::string& filepath, float scale)
+	{
+		std::vector<fiz::Shape*> polyhedra_shapes = models.loadPolyhedra(filepath);
+		for (unsigned int i = 0; i < polyhedra_shapes.size(); ++i)
+			polyhedron_shapes.push_back(polyhedra_shapes[i]);
+		return polyhedra_shapes;
+	}
+
 	void setSphereColor(glm::vec3 col)
 	{
 		point_shader->use();

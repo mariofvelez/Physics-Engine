@@ -11,3 +11,5 @@
 - Static and dynamic bodies
 - Locked rotation for dynamic bodies
 - Sleeping
+- Ray casting all shapes except capsules
+- Car joint (spring systems that roughly model car wheels & suspension)
